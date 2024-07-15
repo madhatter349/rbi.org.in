@@ -32,6 +32,10 @@ jobs:
       run: |
         pip install -r requirements.txt
 
+    - name: Initialize SQLite database
+      run: |
+        python init_db.py
+
     - name: Fetch and save initial data if JSON does not exist
       run: |
         if [ ! -f RiskFreeInterestRate.json ]; then
@@ -45,6 +49,7 @@ jobs:
         python fetch_data.py
 
     - name: Compare and generate commit message
+      id: generate_commit_message
       run: |
         echo "Checking if new data file exists..."
         if [ -f RiskFreeInterestRate-new.json ]; then
@@ -53,7 +58,79 @@ jobs:
         else
           echo "No new data file found, creating initial commit message..."
           echo 'Initial commit' > message.txt
+
+    - name: Insert new data into SQLite database
+      run: |
+        if [ -f RiskFreeInterestRate-new.json ]; then
+          python -c "
+import json
+import sqlite3
+from datetime import datetime
+
+# Load new data
+with open('RiskFreeInterestRate-new.json') as f:
+    new_data = json.load(f)
+
+# Connect to SQLite database
+conn = sqlite3.connect('historical_data.db')
+cursor = conn.cursor()
+
+# Insert new data with a timestamp
+timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+for entry in new_data:
+    cursor.execute('''
+    INSERT INTO historical_data (timestamp, government_security_name, percent)
+    VALUES (?, ?, ?)
+    ''', (timestamp, entry['GovernmentSecurityName'], entry['Percent']))
+
+conn.commit()
+conn.close()
+"
         fi
+
+    - name: Generate Time Series Graph
+      run: |
+        python -c "
+import sqlite3
+import matplotlib.pyplot as plt
+from datetime import datetime
+
+# Connect to SQLite database
+conn = sqlite3.connect('historical_data.db')
+cursor = conn.cursor()
+
+# Query the historical data
+cursor.execute('''
+SELECT timestamp, government_security_name, percent
+FROM historical_data
+''')
+rows = cursor.fetchall()
+
+# Organize the data by security name
+data_by_security = {}
+for row in rows:
+    timestamp = datetime.strptime(row[0], '%Y-%m-%dT%H:%M:%SZ')
+    name = row[1]
+    percent = row[2]
+    if name not in data_by_security:
+        data_by_security[name] = []
+    data_by_security[name].append((timestamp, percent))
+
+# Create time series graph
+plt.figure(figsize=(10, 5))
+for name, values in data_by_security.items():
+    values.sort()
+    dates, percents = zip(*values)
+    plt.plot(dates, percents, label=name)
+
+plt.xlabel('Date')
+plt.ylabel('Percent')
+plt.title('Government Security Percent Changes Over Time')
+plt.legend()
+plt.xticks(rotation=90)
+plt.tight_layout()
+plt.savefig('docs/comparison_graph.png')
+"
 
     - name: Commit and push if it changed
       run: |
@@ -63,10 +140,18 @@ jobs:
         if [ -f RiskFreeInterestRate-new.json ]; then
           echo "Changes found, committing and pushing changes..."
           mv RiskFreeInterestRate-new.json RiskFreeInterestRate.json
-          git add RiskFreeInterestRate.json
+          git add RiskFreeInterestRate.json historical_data.db docs/comparison_graph.png
           git commit -F message.txt || exit 0
-          
           git push
         else
           echo "No changes to commit."
-        fi
+
+    - name: Deploy to GitHub Pages
+      if: ${{ github.ref == 'refs/heads/main' }}
+      run: |
+        git fetch
+        git checkout -B gh-pages
+        mv docs/comparison_graph.png docs/comparison_graph.png
+        git add docs/comparison_graph.png
+        git commit -m "Update comparison graph"
+        git push -f origin gh-pages
