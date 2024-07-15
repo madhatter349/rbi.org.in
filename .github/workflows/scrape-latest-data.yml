@@ -1,83 +1,98 @@
 name: Scrape latest data
+
 on:
   push:
   workflow_dispatch:
   schedule:
     - cron: '21 11 * * *'
+
 jobs:
   scheduled:
     runs-on: ubuntu-latest
     steps:
-    - name: Check out this repo
-      uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.8
-    - uses: actions/cache@v3
-      name: Configure pip caching
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-    - name: Install Python dependencies
-      run: |
-        pip install -r requirements.txt
-    - name: Initialize SQLite database
-      run: |
-        python init_db.py
-    - name: Fetch and save initial data if JSON does not exist
-      run: |
-        if [ ! -f RiskFreeInterestRate.json ]; then
+      - name: Check out this repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.8
+
+      - uses: actions/cache@v3
+        name: Configure pip caching
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Initialize SQLite database
+        run: |
+          python init_db.py
+
+      - name: Fetch and save initial data if JSON does not exist
+        run: |
+          if [ ! -f RiskFreeInterestRate.json ]; then
+            python fetch_data.py
+            mv RiskFreeInterestRate-new.json RiskFreeInterestRate.json
+            echo "Initial data fetched and saved as RiskFreeInterestRate.json"
+          fi
+
+      - name: Fetch latest data
+        run: |
           python fetch_data.py
-          mv RiskFreeInterestRate-new.json RiskFreeInterestRate.json
-          echo "Initial data fetched and saved as RiskFreeInterestRate.json"
-        fi
-    - name: Fetch latest data
-      run: |
-        python fetch_data.py
-    - name: Compare and generate commit message
-      id: generate_commit_message
-      run: |
-        echo "Checking if new data file exists..."
-        if [ -f RiskFreeInterestRate-new.json ]; then
-          echo "New data file found, comparing with old data file..."
-          csv-diff RiskFreeInterestRate.json RiskFreeInterestRate-new.json > message.txt || echo "Initial commit" > message.txt
-        else
-          echo "No new data file found, creating initial commit message..."
-          echo 'Initial commit' > message.txt
-        fi
-    - name: Insert new data into SQLite database
-      run: |
-        if [ -f RiskFreeInterestRate-new.json ]; then
-          python insert_data.py
-        fi
-    - name: Generate Time Series Graph
-      run: |
-        python generate_graph.py
-    - name: Commit and push if it changed
-      run: |
-        git config user.name 'Automated'
-        git config user.email 'actions@users.noreply.github.com'
-        echo "Checking if there are changes to commit..."
-        if [ -f RiskFreeInterestRate-new.json ]; then
-          echo "Changes found, committing and pushing changes..."
-          mv RiskFreeInterestRate-new.json RiskFreeInterestRate.json
-          git add RiskFreeInterestRate.json historical_data.db docs/comparison_graph.png
-          git commit -F message.txt || exit 0
-          git push
-        else
-          echo "No changes to commit."
-        fi
-    - name: Deploy to GitHub Pages
-      if: ${{ github.ref == 'refs/heads/main' }}
-      run: |
-        git fetch
-        git checkout -B gh-pages
-        mv docs/comparison_graph.png docs/comparison_graph.png
-        git add docs/comparison_graph.png
-        git commit -m "Update comparison graph"
-        git push -f origin gh-pages
+
+      - name: Compare and generate commit message
+        id: generate_commit_message
+        run: |
+          echo "Checking if new data file exists..."
+          if [ -f RiskFreeInterestRate-new.json ]; then
+            echo "New data file found, comparing with old data file..."
+            if csv-diff RiskFreeInterestRate.json RiskFreeInterestRate-new.json > message.txt; then
+              echo "Comparison successful"
+            else
+              echo "Initial commit" > message.txt
+            fi
+          else
+            echo "No new data file found, creating initial commit message..."
+            echo 'Initial commit' > message.txt
+
+      - name: Insert new data into SQLite database
+        run: |
+          if [ -f RiskFreeInterestRate-new.json ]; then
+            python insert_data.py
+          fi
+
+      - name: Generate Time Series Graph
+        run: |
+          python generate_graph.py
+
+      - name: Commit and push if it changed
+        run: |
+          git config user.name 'Automated'
+          git config user.email 'actions@users.noreply.github.com'
+          echo "Checking if there are changes to commit..."
+          if [ -f RiskFreeInterestRate-new.json ]; then
+            echo "Changes found, committing and pushing changes..."
+            mv RiskFreeInterestRate-new.json RiskFreeInterestRate.json
+            git add RiskFreeInterestRate.json historical_data.db docs/comparison_graph.png
+            git commit -F message.txt || exit 0
+            git push
+          else
+            echo "No changes to commit."
+
+      - name: Deploy to GitHub Pages
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          git fetch
+          git checkout -B gh-pages
+          mv docs/comparison_graph.png docs/comparison_graph.png
+          git add docs/comparison_graph.png
+          git commit -m "Update comparison graph"
+          git push -f origin gh-pages
