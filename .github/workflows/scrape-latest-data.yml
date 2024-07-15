@@ -53,15 +53,16 @@ jobs:
         run: |
           echo "Checking if new data file exists..."
           if [ -f RiskFreeInterestRate-new.json ]; then
-            echo "New data file found, comparing with old data file..."
-            if csv-diff RiskFreeInterestRate.json RiskFreeInterestRate-new.json > message.txt; then
-              echo "Comparison successful"
-            else
-              echo "Initial commit" > message.txt
-            fi
+              echo "New data file found, comparing with old data file..."
+              if csv-diff RiskFreeInterestRate.json RiskFreeInterestRate-new.json > message.txt; then
+                  echo "Comparison successful"
+              else
+                  echo "Initial commit" > message.txt
+              fi
           else
-            echo "No new data file found, creating initial commit message..."
-            echo 'Initial commit' > message.txt
+              echo "No new data file found, creating initial commit message..."
+              echo 'Initial commit' > message.txt
+          fi
 
       - name: Insert new data into SQLite database
         run: |
