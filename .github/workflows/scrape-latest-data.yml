@@ -47,8 +47,12 @@ jobs:
       run: |
         echo "Checking if new data file exists..."
         if [ -f RiskFreeInterestRate-new.json ]; then
-          echo "New data file found, comparing with old data file..."
-          csv-diff RiskFreeInterestRate.json RiskFreeInterestRate-new.json > message.txt
+          if [ -s RiskFreeInterestRate.json ]; then
+            echo "New data file found, comparing with old data file..."
+            csv-diff RiskFreeInterestRate.json RiskFreeInterestRate-new.json > message.txt
+          else
+            echo "Initial commit" > message.txt
+          fi
         else
           echo "No new data file found, creating initial commit message..."
           echo 'Initial commit' > message.txt
