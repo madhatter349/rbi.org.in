@@ -1,6 +1,7 @@
 import sqlite3
 import matplotlib.pyplot as plt
 from datetime import datetime
+import os
 
 # Connect to SQLite database
 conn = sqlite3.connect('historical_data.db')
@@ -36,4 +37,9 @@ plt.title('Government Security Percent Changes Over Time')
 plt.legend()
 plt.xticks(rotation=90)
 plt.tight_layout()
-plt.savefig('docs/comparison_graph.png')
+
+# Save the figure in the main directory
+plt.savefig('comparison_graph.png')
+
+# Print the absolute path of the saved file for debugging
+print(f"Figure saved as: {os.path.abspath('comparison_graph.png')}")
