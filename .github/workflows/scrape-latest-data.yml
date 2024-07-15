@@ -36,6 +36,13 @@ jobs:
       run: |
         python fetch_data.py
 
+    - name: Check and create initial file if not exists
+      run: |
+        if [ ! -f RiskFreeInterestRate.json ]; then
+          echo "[]" > RiskFreeInterestRate.json
+          echo "Created initial RiskFreeInterestRate.json"
+        fi
+
     - name: Compare and generate commit message
       run: |
         echo "Checking if new data file exists..."
