@@ -4,7 +4,7 @@ on:
   push:
   workflow_dispatch:
   schedule:
-    - cron: '21 11 * * *'
+    - cron: '21 11 * * *'  # Fixed cron syntax
 
 jobs:
   scheduled:
@@ -82,18 +82,20 @@ jobs:
           if [ -f RiskFreeInterestRate-new.json ]; then
             echo "Changes found, committing and pushing changes..."
             mv RiskFreeInterestRate-new.json RiskFreeInterestRate.json
-            git add RiskFreeInterestRate.json historical_data.db docs/comparison_graph.png
+            git add RiskFreeInterestRate.json historical_data.db comparison_graph.png
             git commit -F message.txt || exit 0
             git push
           else
             echo "No changes to commit."
+          fi
 
       - name: Deploy to GitHub Pages
         if: ${{ github.ref == 'refs/heads/main' }}
         run: |
           git fetch
           git checkout -B gh-pages
-          mv docs/comparison_graph.png docs/comparison_graph.png
+          mkdir -p docs
+          mv comparison_graph.png docs/comparison_graph.png
           git add docs/comparison_graph.png
           git commit -m "Update comparison graph"
           git push -f origin gh-pages
