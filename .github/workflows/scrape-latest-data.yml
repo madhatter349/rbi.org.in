@@ -32,27 +32,24 @@ jobs:
       run: |
         pip install -r requirements.txt
 
+    - name: Fetch and save initial data if JSON does not exist
+      run: |
+        if [ ! -f RiskFreeInterestRate.json ]; then
+          python fetch_data.py
+          mv RiskFreeInterestRate-new.json RiskFreeInterestRate.json
+          echo "Initial data fetched and saved as RiskFreeInterestRate.json"
+        fi
+
     - name: Fetch latest data
       run: |
         python fetch_data.py
-
-    - name: Check and create initial file if not exists
-      run: |
-        if [ ! -f RiskFreeInterestRate.json ]; then
-          echo '[{"GovernmentSecurityName": "","Percent": 0.0}]' > RiskFreeInterestRate.json
-          echo "Created initial RiskFreeInterestRate.json with default structure"
-        fi
 
     - name: Compare and generate commit message
       run: |
         echo "Checking if new data file exists..."
         if [ -f RiskFreeInterestRate-new.json ]; then
-          if [ -s RiskFreeInterestRate.json ]; then
-            echo "New data file found, comparing with old data file..."
-            csv-diff RiskFreeInterestRate.json RiskFreeInterestRate-new.json > message.txt
-          else
-            echo "Initial commit" > message.txt
-          fi
+          echo "New data file found, comparing with old data file..."
+          csv-diff RiskFreeInterestRate.json RiskFreeInterestRate-new.json > message.txt || echo "Initial commit" > message.txt
         else
           echo "No new data file found, creating initial commit message..."
           echo 'Initial commit' > message.txt
