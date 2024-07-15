@@ -34,7 +34,7 @@ jobs:
 
     - name: Fetch latest data
       run: |
-        python -c "
+        python - <<'EOF'
 import requests
 import pandas as pd
 from selectolax.parser import HTMLParser
@@ -64,7 +64,7 @@ def riskFreeInterestRate(url='https://www.rbi.org.in/'):
         print(f'Failed to fetch the URL: {response.status_code}')
 
 riskFreeInterestRate()
-        "
+EOF
 
     - name: Compare and generate commit message
       run: |
@@ -83,4 +83,3 @@ riskFreeInterestRate()
           git add RiskFreeInterestRate.json
           git commit -F message.txt || exit 0
           git push
-        fi
