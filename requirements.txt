@@ -3,3 +3,4 @@ pandas
 selectolax
 lxml
 csv-diff
+matplotlib
