@@ -30,7 +30,7 @@ jobs:
 
     - name: Install Python dependencies
       run: |
-        pip install requests selectolax pandas
+        pip install -r requirements.txt
 
     - name: Fetch latest data
       run: |
@@ -38,9 +38,12 @@ jobs:
 
     - name: Compare and generate commit message
       run: |
+        echo "Checking if new data file exists..."
         if [ -f RiskFreeInterestRate-new.json ]; then
+          echo "New data file found, comparing with old data file..."
           csv-diff RiskFreeInterestRate.json RiskFreeInterestRate-new.json > message.txt
         else
+          echo "No new data file found, creating initial commit message..."
           echo 'Initial commit' > message.txt
         fi
 
@@ -48,9 +51,13 @@ jobs:
       run: |
         git config user.name 'Automated'
         git config user.email 'actions@users.noreply.github.com'
+        echo "Checking if there are changes to commit..."
         if [ -f RiskFreeInterestRate-new.json ]; then
+          echo "Changes found, committing and pushing changes..."
           mv RiskFreeInterestRate-new.json RiskFreeInterestRate.json
           git add RiskFreeInterestRate.json
           git commit -F message.txt || exit 0
           git push
+        else
+          echo "No changes to commit."
         fi
