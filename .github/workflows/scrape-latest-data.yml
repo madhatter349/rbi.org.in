@@ -39,8 +39,8 @@ jobs:
     - name: Check and create initial file if not exists
       run: |
         if [ ! -f RiskFreeInterestRate.json ]; then
-          echo "[]" > RiskFreeInterestRate.json
-          echo "Created initial RiskFreeInterestRate.json"
+          echo '[{"GovernmentSecurityName": "","Percent": 0.0}]' > RiskFreeInterestRate.json
+          echo "Created initial RiskFreeInterestRate.json with default structure"
         fi
 
     - name: Compare and generate commit message
